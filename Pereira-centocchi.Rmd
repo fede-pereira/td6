@@ -16,7 +16,8 @@ library(dplyr)
 ```
 
 ```{r}
-data_original <- read.csv("smoking_driking_dataset_Ver01.csv")
+data_original <- read.csv("C:/Users/fpereira/Downloads/smoking_driking_dataset_Ver01.csv")
+
 set.seed(123) # Fijar semilla para reproducibilidad
 data <- sample_n(data_original, 50000)
 
@@ -211,5 +212,46 @@ data$DRK_YN <- original_DRK_YN
 # Mostrar las primeras filas del conjunto de datos
 head(data)
 ```
+
+## División del Conjunto de Datos en Entrenamiento, Validación y Testeo
+
+``` {r data-split, message=FALSE, warning=FALSE}
+# Fijar la semilla para asegurar la replicabilidad
+set.seed(123)
+
+# Número total de observaciones
+n <- nrow(data)
+
+# Crear un vector de índices mezclados
+indices <- sample(1:n)
+
+# Definir los tamaños para cada partición
+train_size <- floor(0.70 * n)
+validation_size <- floor(0.15 * n)
+test_size <- n - train_size - validation_size
+
+# Crear los índices para cada partición
+train_indices <- indices[1:train_size]
+validation_indices <- indices[(train_size + 1):(train_size + validation_size)]
+test_indices <- indices[(train_size + validation_size + 1):n]
+
+# Dividir el conjunto de datos en las tres particiones
+train_data <- data[train_indices, ]
+validation_data <- data[validation_indices, ]
+test_data <- data[test_indices, ]
+
+# Mostrar el tamaño de cada conjunto
+cat("Tamaño del conjunto de entrenamiento:", nrow(train_data), "\n")
+cat("Tamaño del conjunto de validación:", nrow(validation_data), "\n")
+cat("Tamaño del conjunto de testeo:", nrow(test_data), "\n")
+``` 
+``` {r entrenamiento default  message=FALSE, warning=FALSE}
+install.packages("rpart.plot")
+library(rpart.plot)
+arbol_modelo <- rpart(DRK_YN ~ ., data = train_data, method = "class")
+
+# Visualizar el árbol
+rpart.plot(arbol_modelo)
+``` 
 
 
