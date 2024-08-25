@@ -1,0 +1,215 @@
+---
+title: "Alcohol and study"
+author: "Pereira y Centocchi"
+date: "2024-08-24"
+output: pdf_document
+---
+
+
+
+```{r setup, include=FALSE}
+# Configuraciones iniciales
+
+knitr::opts_chunk$set(echo = TRUE)
+library(rpart)
+library(dplyr)
+```
+
+```{r}
+data_original <- read.csv("smoking_driking_dataset_Ver01.csv")
+set.seed(123) # Fijar semilla para reproducibilidad
+data <- sample_n(data_original, 50000)
+
+
+```
+
+```{r}
+# Mostrar las primeras filas del conjunto de datos
+head(data)
+```
+
+
+## Recodificación de Columnas Numéricas a Categóricas
+
+```{r recode-columns, message=FALSE, warning=FALSE}
+library(dplyr)
+
+# Recodificar la columna hear_right
+data <- data %>%
+  mutate(hear_right = recode(hear_right,
+                             `1` = "Normal",
+                             `2` = "Abnormal"))
+
+# Recodificar la columna hear_left
+data <- data %>%
+  mutate(hear_left = recode(hear_left,
+                            `1` = "Normal",
+                            `2` = "Abnormal"))
+
+# Recodificar la columna SMK_stat_type_cd
+data <- data %>%
+  mutate(SMK_stat_type_cd = recode(SMK_stat_type_cd,
+                                   `1` = "No Fumador",
+                                   `2` = "Ex Fumador",
+                                   `3` = "Fumador Actual"))
+# Recodificar la columna DRK_YN
+data <- data %>%
+  mutate(DRK_YN = recode(DRK_YN,
+                            `1` = "Y",
+                            `2` = "N"))
+# Recodificar la columna urine_protein
+data <- data %>%
+  mutate(urine_protein = recode(urine_protein,
+                                `1` = "-",
+                                `2` = "+/-",
+                                `3` = "+1",
+                                `4` = "+2",
+                                `5` = "+3",
+                                `6` = "+4"))
+
+# Mostrar las primeras filas del dataset recodificado
+head(data)
+
+
+
+```
+
+```{r}
+# Resumen estadístico de los datos
+summary(data)
+```
+
+
+
+## Distribución de las Columnas Numéricas
+
+## Graficar la Distribución de Variables Numéricas y No Numéricas
+
+```{r distribution-plot-all, message=FALSE, warning=FALSE}
+library(ggplot2)
+
+# Seleccionar las columnas numéricas y no numéricas
+numeric_cols <- data[sapply(data, is.numeric)]
+non_numeric_cols <- data[sapply(data, Negate(is.numeric))]
+
+# Graficar la distribución de cada columna numérica
+numeric_plots <- lapply(names(numeric_cols), function(col) {
+  ggplot(data, aes_string(x = col)) +
+    geom_histogram(fill = "skyblue", color = "black", bins = 50) +
+    labs(title = paste("Distribución de", col), x = col, y = "Frecuencia") +
+    theme_minimal()
+})
+
+# Graficar la distribución de cada columna no numérica
+non_numeric_plots <- lapply(names(non_numeric_cols), function(col) {
+  ggplot(data, aes_string(x = col)) +
+    geom_bar(fill = "skyblue", color = "black") +
+    labs(title = paste("Distribución de", col), x = col, y = "Frecuencia") +
+    theme_minimal()
+})
+
+# Combinar todas las gráficas en una lista
+plot_list <- c(numeric_plots, non_numeric_plots)
+
+# Mostrar las gráficas
+plot_list
+
+```
+
+
+```{r correlation-matrix-groups, message=FALSE, warning=FALSE}
+# Dividir las columnas en grupos de 5 (puedes ajustar el tamaño del grupo)
+group_size <- 9
+col_groups <- split(names(numeric_cols), ceiling(seq_along(names(numeric_cols))/group_size))
+
+# Graficar la matriz de correlación para cada grupo
+for (cols in col_groups) {
+  corr_matrix_group <- cor(numeric_cols[cols], use = "complete.obs")
+  
+  print(ggcorrplot(corr_matrix_group, 
+                   method = "circle", 
+                   type = "lower", 
+                   lab = TRUE, 
+                   lab_size = 3, 
+                   colors = c("red", "white", "blue"), 
+                   title = paste("Matriz de Correlación - Grupo:", paste(cols, collapse = ", ")), 
+                   ggtheme = theme_minimal()))
+}
+```
+
+
+
+```{r correlation-matrix-filtered, message=FALSE, warning=FALSE}
+library(ggcorrplot)
+
+# Calcular la matriz de correlación
+corr_matrix <- cor(numeric_cols, use = "complete.obs")
+
+# Filtrar correlaciones significativas (mayores en valor absoluto a 0.5)
+corr_matrix_filtered <- corr_matrix
+corr_matrix_filtered[abs(corr_matrix_filtered) < 0.5 ] <- NA
+
+# Graficar la matriz de correlación filtrada
+ggcorrplot(corr_matrix_filtered, 
+           method = "circle", 
+           type = "lower", 
+           lab = TRUE,
+           lab_size = 3, 
+           colors = c("red", "white", "blue"), 
+           title = "Matriz de Correlación Filtrada", 
+           ggtheme = theme_minimal())
+
+```
+
+## Correlación con la Columna `DRK_YN`
+
+## Cálculo de Correlación y Reversión de la Conversión
+
+```{r correlation-specific-column-plot-revert, message=FALSE, warning=FALSE}
+library(dplyr)
+library(ggplot2)
+
+# Guardar el estado original de DRK_YN
+original_DRK_YN <- data$DRK_YN
+
+# Verificar si DRK_YN es numérica; si no, convertirla
+if (!is.numeric(data$DRK_YN)) {
+  data$DRK_YN <- as.numeric(as.factor(data$DRK_YN))
+}
+
+# Seleccionar solo columnas numéricas
+numeric_cols <- data[sapply(data, is.numeric)]
+
+# Calcular las correlaciones de DRK_YN con todas las demás columnas
+correlations <- cor(numeric_cols, use = "complete.obs")["DRK_YN", ]
+
+# Ordenar las correlaciones en orden decreciente (opcional)
+correlations <- sort(correlations, decreasing = TRUE)
+
+# Convertir las correlaciones en un data frame para graficar
+correlation_df <- data.frame(
+  variable = names(correlations),
+  correlation = correlations
+)
+
+# Graficar las correlaciones
+ggplot(correlation_df, aes(x = reorder(variable, correlation), y = correlation)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  coord_flip() +
+  labs(title = "Correlación de Variables con DRK_YN", x = "Variables", y = "Correlación") +
+  theme_minimal()
+
+# Mostrar las correlaciones
+print(correlations)
+
+# Revertir DRK_YN a su estado original
+data$DRK_YN <- original_DRK_YN
+
+```
+
+```{r}
+# Mostrar las primeras filas del conjunto de datos
+head(data)
+```
+
+

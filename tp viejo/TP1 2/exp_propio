@@ -1,0 +1,17 @@
+# **Experimento Propio**
+
+**Objetivo:** Medir qué tan bueno es el modelo según la flexibilidad que le damos, a medida que eliminamos las variables menos importantes.
+
+**Hipótesis:** Eliminar las variables menos importantes no afectará mucho en el AUC de nuestro modelo, salvo que sean muy pocas las variables que conforman al dataset en su integridad.
+
+## Resultados:
+
+![](src/outputs/plots/sample_exp.jpg)
+
+Aquí tenemos los resultados de los experimentos. Como bien dijimos en la hipótesis, eliminar las columnas menos importantes no afecta al AUC de nuestro modelo de predicción, de hecho, se mantienen practicamente igual cuando eliminamos las menos importantes.
+
+En churn, podemos ver un leve empeoramiento cuando se eliminan las 4 columnas menos importantes, pero que se mantiene cuando eliminamos 5. Esto podría deberse a que el dataset tiene muchas columnas las cuales no aportan mucha información relevante a la hora de predecir el churn rate de los clientes. Vemos que aún eliminando 5 variables el modelo mantiene métricas muy similares que con el dataset completo.
+
+Por su parte, el dataset Heart, mantiene su AUC eliminando la cuarta columna menos importante inclusive, pero vemos cómo empeora el modelo cuando eliminamos la quinta. Aquí suponemos que el dataset de por sí, tiene 4 columnas que no nos están aportando en la mejoría de nuestra predicción. Ahora bien, cuando intentamos eliminar la quinta, resulta que nos afecta al modelo dado que se estaría tratando de una variable con alta importancia. Exactamente lo mismo sucede para el dataset House.
+
+En conclusión, la eliminación de columnas podría mejorar el desempeño en términos de eficiencia de nuestro modelo. Si bien no vimos mejorías eliminando variables, hubo casos donde no vimos que empeorara el modelo. Y suponemos que al tener menos datos que procesar el modelo funcionará más rápido. Pero podría sucedernos, como en los casos donde eliminamos 5 columnas y la performance decayó, que afecte al desempeño y nos veamos perjudicados con nuestras predicciones. Por lo que para eliminar columnas de manera adecuada, dependerá de cada caso particular cuántas podríamos eliminar para mejorar la eficiencia del modelo.
