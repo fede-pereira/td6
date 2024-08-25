@@ -119,6 +119,7 @@ plot_list
 
 
 ```{r correlation-matrix-groups, message=FALSE, warning=FALSE}
+library(ggcorrplot)
 # Dividir las columnas en grupos de 5 (puedes ajustar el tamaño del grupo)
 group_size <- 9
 col_groups <- split(names(numeric_cols), ceiling(seq_along(names(numeric_cols))/group_size))
@@ -246,12 +247,60 @@ cat("Tamaño del conjunto de validación:", nrow(validation_data), "\n")
 cat("Tamaño del conjunto de testeo:", nrow(test_data), "\n")
 ``` 
 ``` {r entrenamiento default  message=FALSE, warning=FALSE}
-install.packages("rpart.plot")
+#install.packages("rpart.plot")
 library(rpart.plot)
 arbol_modelo <- rpart(DRK_YN ~ ., data = train_data, method = "class")
 
 # Visualizar el árbol
 rpart.plot(arbol_modelo)
 ``` 
+
+
+``` {r error-metrics, message=FALSE, warning=FALSE}
+# Instalar paquetes necesarios
+#install.packages("caret")
+#install.packages("e1071")
+#install.packages("pROC")
+
+# Cargar librerías
+library(caret)
+library(pROC)
+
+# Realizar predicciones en el conjunto de validación
+predicciones <- predict(arbol_modelo, newdata = validation_data, type = "class")
+
+# Convertir validation_data$DRK_YN a factor y eliminar niveles no usados
+validation_data$DRK_YN <- as.factor(validation_data$DRK_YN)
+validation_data$DRK_YN <- droplevels(validation_data$DRK_YN)
+
+# Convertir predicciones a factor con los mismos niveles que validation_data$DRK_YN
+niveles <- levels(validation_data$DRK_YN)
+predicciones <- factor(predicciones, levels = niveles)
+
+# Crear la matriz de confusión
+confusion_matrix <- confusionMatrix(predicciones, validation_data$DRK_YN)
+print(confusion_matrix)
+
+# Calcular la precisión y el recall
+precision <- confusion_matrix$byClass["Precision"]
+recall <- confusion_matrix$byClass["Recall"]
+print(precision)
+print(recall)
+
+# Calcular el F1-score
+f1_score <- 2 * (precision * recall) / (precision + recall)
+print("f1_score")
+print(f1_score)
+
+# Calcular el AUC-ROC
+roc_curve <- roc(as.numeric(validation_data$DRK_YN), as.numeric(predicciones))
+auc_roc <- auc(roc_curve)
+
+# Mostrar el AUC-ROC
+print(auc_roc)
+
+
+```
+
 
 
