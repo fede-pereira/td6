@@ -281,6 +281,10 @@ predicciones <- factor(predicciones, levels = niveles)
 confusion_matrix <- confusionMatrix(predicciones, validation_data$DRK_YN)
 print(confusion_matrix)
 
+# Obtener la precisión
+accuracy <- confusion_matrix$overall["Accuracy"]
+print(accuracy)
+
 # Calcular la precisión y el recall
 precision <- confusion_matrix$byClass["Precision"]
 recall <- confusion_matrix$byClass["Recall"]
@@ -302,5 +306,22 @@ print(auc_roc)
 
 ```
 
+```{r}
+arbol_modelo <- rpart(DRK_YN ~ ., data = train_data, method = "class",
+                      cp = 0,           # Parámetro de complejidad
+                      xval = 0,
+                      minsplit = 100,       # Mínimo número de observaciones en un nodo antes de dividir
+                      minbucket = 100,     # Mínimo número de observaciones en un nodo terminal
+                      maxdepth = 9)        # Profundidad máxima del árbol
+
+# Calcular el AUC-ROC
+predicciones <- predict(arbol_modelo, newdata = validation_data, type = "class")
+roc_curve <- roc(as.numeric(validation_data$DRK_YN), as.numeric(predicciones))
+auc_roc <- auc(roc_curve)
+
+# Mostrar el AUC-ROC
+print(auc_roc)
+
+```
 
 
