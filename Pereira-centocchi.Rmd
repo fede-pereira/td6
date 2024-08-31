@@ -324,4 +324,108 @@ print(auc_roc)
 
 ```
 
+```{r}
+# Cargar las librerías necesarias
+library(rpart)
+library(pROC)
+
+# Inicializar un data frame para guardar los resultados
+resultados <- data.frame(minsplit = integer(),
+                         minbucket = integer(),
+                         maxdepth = integer(),
+                         auc_roc = numeric(),
+                         stringsAsFactors = FALSE)
+
+# Definir los rangos de los hiperparámetros
+minsplit_values <- seq(0, 100, by = 10)
+minbucket_values <- seq(0, 150, by = 10)
+maxdepth_values <- seq(1, 15, by = 1)
+
+# Triple for para recorrer todas las combinaciones de hiperparámetros
+for (minsplit in minsplit_values) {
+  for (minbucket in minbucket_values) {
+    for (maxdepth in maxdepth_values) {
+      
+      # Entrenar el modelo con la combinación actual de hiperparámetros
+      arbol_modelo <- rpart(DRK_YN ~ ., data = train_data, method = "class",
+                            cp = 0,           # Parámetro de complejidad
+                            xval = 0,
+                            minsplit = minsplit,       # Mínimo número de observaciones en un nodo antes de dividir
+                            minbucket = minbucket,     # Mínimo número de observaciones en un nodo terminal
+                            maxdepth = maxdepth)        # Profundidad máxima del árbol
+      
+      # Calcular el AUC-ROC
+      predicciones <- predict(arbol_modelo, newdata = validation_data, type = "class")
+      roc_curve <- roc(as.numeric(validation_data$DRK_YN), as.numeric(predicciones), quiet = TRUE)
+      auc_roc <- auc(roc_curve)
+      
+      # Guardar los resultados en el data frame
+      resultados <- rbind(resultados, data.frame(minsplit = minsplit, 
+                                                 minbucket = minbucket, 
+                                                 maxdepth = maxdepth, 
+                                                 auc_roc = auc_roc))
+    }
+  }
+}
+
+# Mostrar los resultados
+print(resultados)
+
+```
+
+```{r}
+# Encontrar el índice del máximo AUC-ROC
+max_index <- which.max(resultados$auc_roc)
+
+# Extraer los valores correspondientes a ese índice
+max_auc_roc <- resultados$auc_roc[max_index]
+best_params <- resultados[max_index, ]
+
+# Imprimir el AUC-ROC máximo y los hiperparámetros correspondientes
+cat("El máximo AUC-ROC es:", max_auc_roc, "\n")
+cat("Logrado con minsplit =", best_params$minsplit, 
+    ", minbucket =", best_params$minbucket, 
+    ", maxdepth =", best_params$maxdepth, "\n")
+```
+
+```{r}
+
+
+# Encontrar el mejor AUC-ROC para cada valor de minsplit
+best_by_minsplit <- aggregate(auc_roc ~ minsplit, data = resultados, max)
+
+# Gráfico para minsplit
+ggplot(best_by_minsplit, aes(x = minsplit, y = auc_roc)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Mejor AUC-ROC por minsplit",
+       x = "minsplit",
+       y = "AUC-ROC") +
+  theme_minimal()
+
+# Encontrar el mejor AUC-ROC para cada valor de minbucket
+best_by_minbucket <- aggregate(auc_roc ~ minbucket, data = resultados, max)
+
+# Gráfico para minbucket
+ggplot(best_by_minbucket, aes(x = minbucket, y = auc_roc)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Mejor AUC-ROC por minbucket",
+       x = "minbucket",
+       y = "AUC-ROC") +
+  theme_minimal()
+
+# Encontrar el mejor AUC-ROC para cada valor de maxdepth
+best_by_maxdepth <- aggregate(auc_roc ~ maxdepth, data = resultados, max)
+
+# Gráfico para maxdepth
+ggplot(best_by_maxdepth, aes(x = maxdepth, y = auc_roc)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Mejor AUC-ROC por maxdepth",
+       x = "maxdepth",
+       y = "AUC-ROC") +
+  theme_minimal()
+
+```
 
