@@ -595,4 +595,28 @@ ggplot(best_by_maxdepth_20, aes(x = maxdepth, y = auc_roc_20)) +
        y = "AUC-ROC") +
   theme_minimal()
 
+# Gráfico para maxdepth (Para 50% NA)
+best_by_maxdepth_50 <- aggregate(auc_roc_50 ~ maxdepth, data = resultados, max)
+ggplot(best_by_maxdepth_50, aes(x = maxdepth, y = auc_roc_50)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Mejor AUC-ROC por maxdepth (50% NA)",
+       x = "maxdepth",
+       y = "AUC-ROC") +
+  theme_minimal()
+
+# Gráfico para maxdepth (Para 50% NA)
+best_by_maxdepth_75 <- aggregate(auc_roc_75 ~ maxdepth, data = resultados, max)
+ggplot(best_by_maxdepth_75, aes(x = maxdepth, y = auc_roc_75)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Mejor AUC-ROC por maxdepth (75% NA)",
+       x = "maxdepth",
+       y = "AUC-ROC") +
+  theme_minimal()
+
 ```
+
+```{r}
+
+
