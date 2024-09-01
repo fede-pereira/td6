@@ -16,7 +16,7 @@ library(dplyr)
 ```
 
 ```{r}
-data_original <- read.csv("C:/Users/fpereira/Downloads/smoking_driking_dataset_Ver01.csv")
+data_original <- read.csv("C:/Users/matia/Downloads/smoking_driking_dataset_Ver01.csv")
 
 set.seed(123) # Fijar semilla para reproducibilidad
 data <- sample_n(data_original, 50000)
@@ -428,4 +428,171 @@ ggplot(best_by_maxdepth, aes(x = maxdepth, y = auc_roc)) +
   theme_minimal()
 
 ```
+```{r}
+#Esto seria el punto 6 pero no veo mucha diferencia (?)
+arbol_modelo <- rpart(
+  DRK_YN ~ ., 
+  data = train_data, 
+  method = "class",
+  control = rpart.control(maxdepth = 11, minsplit = 20, minbucket = 100)
+)
 
+# Visualizar el árbol
+rpart.plot(arbol_modelo)
+```
+
+
+
+
+
+```{r}
+# Función para agregar NA a un porcentaje de datos
+introduce_nas <- function(data, percentage) {
+  set.seed(123)  # Fijar semilla para reproducibilidad
+  data_with_nas <- data
+  for (col in names(data_with_nas)) {
+    if (!is.numeric(data_with_nas[[col]])) next  # Saltar variables no numéricas
+    na_indices <- sample(seq_len(nrow(data_with_nas)), size = floor(percentage * nrow(data_with_nas)))
+    data_with_nas[na_indices, col] <- NA
+  }
+  return(data_with_nas)
+}
+
+# Crear los conjuntos de datos con valores faltantes
+train_data_20 <- introduce_nas(train_data, 0.20)
+train_data_50 <- introduce_nas(train_data, 0.50)
+train_data_75 <- introduce_nas(train_data, 0.75)
+```
+
+```{r}
+library(rpart)
+library(pROC)
+
+# Función para entrenar el modelo y calcular el AUC-ROC
+entrenar_arbol_y_calcular_auc <- function(train_data, valid_data, maxdepth, minsplit, minbucket) {
+  arbol_modelo <- rpart(DRK_YN ~ ., data = train_data, method = "class",
+                        control = rpart.control(maxdepth = maxdepth, minsplit = minsplit, minbucket = minbucket, cp = 0, xval = 0))
+  
+  # Predecir probabilidades en el conjunto de validación
+  predicciones <- predict(arbol_modelo, newdata = valid_data, type = "class")
+  
+  # Calcular ROC-AUC
+  roc_curve <- roc(as.numeric(valid_data$DRK_YN), as.numeric(predicciones))
+  auc_roc <- auc(roc_curve)
+  
+  return(auc_roc)
+}
+
+# Entrenar y calcular AUC para cada conjunto de datos con diferentes valores faltantes
+auc_20 <- entrenar_arbol_y_calcular_auc(train_data_20, validation_data, maxdepth = 5, minsplit = 20, minbucket = 7)
+auc_50 <- entrenar_arbol_y_calcular_auc(train_data_50, validation_data, maxdepth = 5, minsplit = 20, minbucket = 7)
+auc_75 <- entrenar_arbol_y_calcular_auc(train_data_75, validation_data, maxdepth = 5, minsplit = 20, minbucket = 7)
+
+# Mostrar los resultados de AUC-ROC
+cat("AUC-ROC para 20% de NA:", auc_20, "\n")
+cat("AUC-ROC para 50% de NA:", auc_50, "\n")
+cat("AUC-ROC para 75% de NA:", auc_75, "\n")
+```
+
+```{r}
+# Inicializar un data frame para guardar los resultados
+resultados <- data.frame(minsplit = integer(),
+                         minbucket = integer(),
+                         maxdepth = integer(),
+                         auc_roc_20 = numeric(),
+                         auc_roc_50 = numeric(),
+                         auc_roc_75 = numeric(),
+                         stringsAsFactors = FALSE)
+
+# Definir los rangos de los hiperparámetros
+minsplit_values <- seq(0, 100, by = 10)
+minbucket_values <- seq(0, 150, by = 10)
+maxdepth_values <- seq(1, 15, by = 1)
+
+# Triple for para recorrer todas las combinaciones de hiperparámetros
+for (minsplit in minsplit_values) {
+  for (minbucket in minbucket_values) {
+    for (maxdepth in maxdepth_values) {
+      
+      # Entrenar el modelo con la combinación actual de hiperparámetros para 20% NA
+      arbol_modelo_20 <- rpart(DRK_YN ~ ., data = train_data_20, method = "class",
+                               control = rpart.control(maxdepth = maxdepth, minsplit = minsplit, minbucket = minbucket, cp = 0, xval = 0))
+      predicciones_20 <- predict(arbol_modelo_20, newdata = validation_data, type = "class")
+      roc_curve_20 <- roc(as.numeric(validation_data$DRK_YN), as.numeric(predicciones_20), quiet = TRUE)
+      auc_roc_20 <- auc(roc_curve_20)
+      
+      # Entrenar el modelo con la combinación actual de hiperparámetros para 50% NA
+      arbol_modelo_50 <- rpart(DRK_YN ~ ., data = train_data_50, method = "class",
+                               control = rpart.control(maxdepth = maxdepth, minsplit = minsplit, minbucket = minbucket, cp = 0, xval = 0))
+      predicciones_50 <- predict(arbol_modelo_50, newdata = validation_data, type = "class")
+      roc_curve_50 <- roc(as.numeric(validation_data$DRK_YN), as.numeric(predicciones_50), quiet = TRUE)
+      auc_roc_50 <- auc(roc_curve_50)
+      
+      # Entrenar el modelo con la combinación actual de hiperparámetros para 75% NA
+      arbol_modelo_75 <- rpart(DRK_YN ~ ., data = train_data_75, method = "class",
+                               control = rpart.control(maxdepth = maxdepth, minsplit = minsplit, minbucket = minbucket, cp = 0, xval = 0))
+      predicciones_75 <- predict(arbol_modelo_75, newdata = validation_data, type = "class")
+      roc_curve_75 <- roc(as.numeric(validation_data$DRK_YN), as.numeric(predicciones_75), quiet = TRUE)
+      auc_roc_75 <- auc(roc_curve_75)
+      
+      # Guardar los resultados en el data frame
+      resultados <- rbind(resultados, data.frame(minsplit = minsplit, 
+                                                 minbucket = minbucket, 
+                                                 maxdepth = maxdepth, 
+                                                 auc_roc_20 = auc_roc_20,
+                                                 auc_roc_50 = auc_roc_50,
+                                                 auc_roc_75 = auc_roc_75))
+    }
+  }
+}
+
+# Mostrar los resultados
+#print(resultados)
+```
+
+```{r}
+# Encontrar el índice del máximo AUC-ROC para cada nivel de NA
+max_index_20 <- which.max(resultados$auc_roc_20)
+max_index_50 <- which.max(resultados$auc_roc_50)
+max_index_75 <- which.max(resultados$auc_roc_75)
+
+# Extraer los valores correspondientes a esos índices
+max_auc_roc_20 <- resultados$auc_roc_20[max_index_20]
+best_params_20 <- resultados[max_index_20, ]
+
+max_auc_roc_50 <- resultados$auc_roc_50[max_index_50]
+best_params_50 <- resultados[max_index_50, ]
+
+max_auc_roc_75 <- resultados$auc_roc_75[max_index_75]
+best_params_75 <- resultados[max_index_75, ]
+
+# Imprimir el AUC-ROC máximo y los hiperparámetros correspondientes para cada nivel de NA
+cat("El máximo AUC-ROC para 20% de NA es:", max_auc_roc_20, "\n")
+cat("Logrado con minsplit =", best_params_20$minsplit, 
+    ", minbucket =", best_params_20$minbucket, 
+    ", maxdepth =", best_params_20$maxdepth, "\n")
+
+cat("El máximo AUC-ROC para 50% de NA es:", max_auc_roc_50, "\n")
+cat("Logrado con minsplit =", best_params_50$minsplit, 
+    ", minbucket =", best_params_50$minbucket, 
+    ", maxdepth =", best_params_50$maxdepth, "\n")
+
+cat("El máximo AUC-ROC para 75% de NA es:", max_auc_roc_75, "\n")
+cat("Logrado con minsplit =", best_params_75$minsplit, 
+    ", minbucket =", best_params_75$minbucket, 
+    ", maxdepth =", best_params_75$maxdepth, "\n")
+
+```
+
+```{r}
+# Gráfico para maxdepth (Para 20% NA)
+best_by_maxdepth_20 <- aggregate(auc_roc_20 ~ maxdepth, data = resultados, max)
+ggplot(best_by_maxdepth_20, aes(x = maxdepth, y = auc_roc_20)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Mejor AUC-ROC por maxdepth (20% NA)",
+       x = "maxdepth",
+       y = "AUC-ROC") +
+  theme_minimal()
+
+```
