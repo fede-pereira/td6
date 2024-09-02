@@ -435,6 +435,12 @@ cat("Logrado con minsplit =", best_params$minsplit,
     ", maxdepth =", best_params$maxdepth, "\n")
 ```
 
+La mejor combinacion lograda de hiperparametros fue con `minsplit = 50`, `minbucket = 50` y `maxdepth = 11` con un AUC-ROC de 0.714.
+Para entender mejor como se comportan los hiperparametros, se graficaran los resultados obtenidos.
+
+Los siguientes graficos muestra para cada hiperparametro como reacciono el AUC-ROC al variar el hiperparametro. Se puede ver el maximo AUC-ROC para ese valor del hiperparametro entre las combinaciones de los otros dos hiperparametros probadas.
+
+
 ```{r}
 
 
@@ -475,6 +481,13 @@ ggplot(best_by_maxdepth, aes(x = maxdepth, y = auc_roc)) +
   theme_minimal()
 
 ```
+
+Pudimos observar en una exploracion inicial que si el minsplit no era por lo menos 3 veces mayor que el minbucket este no tenia efecto en el modelo, por lo que se decidio que este avanzara hasta valores mayores que el maximo propuesto de minbucket. Tambien 
+De la misma manera hubo que agregarle mas valores al rango de minbucket y minsplit ya que el maximo encontrado estaba siemrpe en el valor mas grande de estos.
+
+En los graficos se puede ver como el AUC-ROC tiene un pico en el valor optimo de cada hiperparametro, y luego disminuye a medida que se aleja de este valor optimo. En minsplit podemos observar como para los valores mas bajo el maximo que alcanzan es mas alto y luego disminuye un poco antes de volver a subir y llegar a su óptimo.
+Esto nos parecío curioso, pero llegamos a entender que en esos valores pequeños, debido a que el minbucket era mayor al minsplit este queda anulado y no afectaba el resultado.
+
 ```{r}
 #Esto seria el punto 6 pero no veo mucha diferencia (?)
 arbol_modelo2 <- rpart(DRK_YN ~ ., data = train_data, method = "class",
@@ -487,6 +500,9 @@ arbol_modelo2 <- rpart(DRK_YN ~ ., data = train_data, method = "class",
 # Visualizar el árbol
 rpart.plot(arbol_modelo2)
 ```
+
+
+
 ```{r}
 # Obtener la importancia de las variables directamente del modelo
 importancia <- arbol_modelo$variable.importance

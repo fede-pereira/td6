@@ -5,6 +5,46 @@ date: "2024-08-24"
 output: pdf_document
 ---
 
+## 1. Introducción al problema
+
+### Descripción del conjunto de datos
+
+El conjunto de datos que hemos seleccionado para este análisis proviene del **Servicio Nacional de Seguro de Salud de Corea**. Este conjunto de datos incluye diversas señales corporales y se utiliza para clasificar si una persona es fumadora o consumidora de alcohol.
+
+**Variables principales del conjunto de datos:**
+
+-   **sex**: Género del individuo (masculino, femenino).
+-   **age**: Edad redondeada a múltiplos de 5 años.
+-   **height**: Altura del individuo, redondeada a 5 cm.
+-   **weight**: Peso del individuo en kilogramos.
+-   **sight_left, sight_right**: Agudeza visual del ojo izquierdo y derecho, respectivamente.
+-   **hear_left, hear_right**: Audición del oído izquierdo y derecho (1: normal, 2: anormal).
+-   **SBP, DBP**: Presión arterial sistólica y diastólica.
+-   **BLDS**: Glucosa en sangre en ayunas.
+-   **tot_chole, HDL_chole, LDL_chole**: Colesterol total, HDL y LDL.
+-   **triglyceride**: Triglicéridos en sangre.
+-   **hemoglobin**: Hemoglobina en sangre.
+-   **urine_protein**: Proteína en la orina.
+-   **serum_creatinine**: Creatinina en suero.
+-   **SGOT_AST, SGOT_ALT**: Enzimas hepáticas AST y ALT.
+-   **gamma_GTP**: Gamma-glutamil transferasa.
+-   **SMK_stat_type_cd**: Estado de fumador (1: nunca ha fumado, 2: ex fumador, 3: fumador actual).
+-   **DRK_YN**: Estado de consumo de alcohol (Sí/No).
+
+**Problema a resolver:**
+
+El objetivo de este análisis es predecir si una persona consume alcohol (variable **DRK_YN**) utilizando las otras variables disponibles en el conjunto de datos como predictores. Esto se formulará como un problema de clasificación binaria.
+
+### Justificación del uso del conjunto de datos
+
+Hemos elegido este conjunto de datos para el uso de árboles de decisión debido a varias razones:
+
+1.  **Variedad de Atributos**: El conjunto de datos contiene tanto variables numéricas como categóricas, lo cual es ideal para árboles de decisión que pueden manejar ambos tipos de datos eficazmente.
+
+2.  **Predecibilidad del Comportamiento de Salud**: La habilidad de predecir comportamientos de salud como el consumo de alcohol tiene aplicaciones prácticas en industrias como las aseguradoras, donde conocer los hábitos de un individuo puede influir en la determinación de primas y evaluaciones de riesgo.
+
+3.  **Complejidad de la Relación entre Variables**: La relación entre las señales corporales y el consumo de alcohol no es lineal ni evidente, lo cual requiere un modelo de clasificación más complejo. Los árboles de decisión son adecuados para capturar interacciones/relaciones complejas entre variables y para manejar relaciones no lineales.
+
 ```{r setup, include=FALSE}
 # Configuraciones iniciales
 
@@ -28,7 +68,9 @@ data <- sample_n(data_original, 50000)
 head(data)
 ```
 
-## Recodificación de Columnas Numéricas a Categóricas
+### Recodificación de Columnas Numéricas a Categóricas
+
+Nuestros datos tenian muchas variables Categóricas expresadas como números, por lo que se procedió a recodificarlas como se pidío en la consigna.
 
 ```{r recode-columns, message=FALSE, warning=FALSE}
 library(dplyr)
@@ -78,9 +120,9 @@ head(data)
 summary(data)
 ```
 
-## Distribución de las Columnas Numéricas
+### Graficar la Distribución de Variables Numéricas y No Numéricas
 
-## Graficar la Distribución de Variables Numéricas y No Numéricas
+Para explorar la distribución de las variables numéricas y no numéricas, se graficarán histogramas y gráficos de barras respectivamente.
 
 ```{r distribution-plot-all, message=FALSE, warning=FALSE}
 library(ggplot2)
@@ -112,6 +154,12 @@ plot_list <- c(numeric_plots, non_numeric_plots)
 plot_list
 
 ```
+
+Pudimos observar que la variable objetivo `DRK_YN`, estaba balanceada, lo cual es bueno para el modelo. Tambien la distribucion de las variables numericas no presentaba valores atipicos, su distribucion en general era normal con pocos ouliers. Algunas clases estaba desbalanceadas, como por ejemplo la variable `hear_right` y `hear_left`.
+
+## Graficar la Matriz de Correlación
+
+Para continuear con la exploracion de los datos, realizamos un analisis de correlacion entre las variables numericas.
 
 ```{r correlation-matrix-groups, message=FALSE, warning=FALSE}
 library(ggcorrplot)
@@ -156,9 +204,13 @@ ggcorrplot(corr_matrix_filtered,
 
 ```
 
-## Correlación con la Columna `DRK_YN`
+Pudimos observar que no habia correlaciones fuertes entre las variables numericas, lo cual es bueno para el modelo, ya que no hay multicolinealidad entre las variables. A exccepcion de variables que estan relacionadas por naturaleza, como por ejemplo `hear_right` y `hear_left`.
 
-## Cálculo de Correlación y Reversión de la Conversión
+### Correlación con la Columna `DRK_YN`
+
+### Cálculo de Correlación y Reversión de la Conversión
+
+El siguiente paso fue analizar la correlacion con la variale a predecir, `DRK_YN`, para ello se grafico la correlacion de cada variable numerica con `DRK_YN`. para esto recreamos la variable `DRK_YN` a un binario 1 y 0 para caluclar asi su correlacion con las variables numericas.
 
 ```{r correlation-specific-column-plot-revert, message=FALSE, warning=FALSE}
 library(dplyr)
@@ -202,10 +254,7 @@ data$DRK_YN <- original_DRK_YN
 
 ```
 
-```{r}
-# Mostrar las primeras filas del conjunto de datos
-head(data)
-```
+Ninguna variable presento una correlacion mayor a un 0.4 con la variable objetivo `DRK_YN`, aun asi esperamos que el modelo pueda predecir correctamente la variable objetivo ya que todas tienen algo de correlacion y combinandolas podrian revelar relaciones a DRK_YN\`.
 
 ## División del Conjunto de Datos en Entrenamiento, Validación y Testeo
 
@@ -243,15 +292,30 @@ cat("Tamaño del conjunto de testeo:", nrow(test_data), "\n")
 ```{r entrenamiento default  message=FALSE, warning=FALSE}
 #install.packages("rpart.plot")
 library(rpart.plot)
-arbol_modelo <- rpart(DRK_YN ~ ., data = train_data, method = "class")
+arbol_modelo_default <- rpart(DRK_YN ~ ., data = train_data, method = "class")
 
 # Visualizar el árbol
-rpart.plot(arbol_modelo)
+rpart.plot(arbol_modelo_default)
 ```
+
+Para explicar la estructura general del árbol de decisión obtenido, nos centraremos en los primeros cortes (o divisiones) del árbol, ya que estos representan las decisiones más importantes y generales que el modelo utiliza para clasificar si una persona consume alcohol o no.
+
+### Estructura General del Árbol de Decisión
+
+1.  **Raíz del Árbol**:
+    -   **Nodo Raíz**: El nodo raíz del árbol representa el punto de partida para la clasificación. Aquí, el árbol muestra que el 50% de los datos en el conjunto de entrenamiento son individuos que consumen alcohol (`Y = Yes`).
+    -   **División Inicial (Primer Corte)**: La primera decisión que el árbol toma es basada en la variable **sex** (sexo). Esta decisión divide los datos en dos grupos: aquellos que son de sexo femenino (`yes`) y aquellos que no lo son (`no`).
+2.  **Primer Nivel de Divisiones**:
+    -   **Rama Izquierda (Sex = Female)**:
+        -   En esta rama, el árbol identifica que dentro del grupo femenino, el 31% no consume alcohol (`N = No`), mientras que el 69% restante sí consume alcohol. Esta primera división muestra que el sexo es una variable significativa para predecir el consumo de alcohol.
+        -   **Segundo Corte en Rama Izquierda (age \>= 48)**: Dentro del grupo femenino, el árbol realiza otra división basada en la edad, específicamente si la edad es mayor o igual a 48 años. Aquí, encontramos que a medida que la edad aumenta, la proporción de personas que no consumen alcohol aumenta al 47% en mujeres de 48 años o más.
+    -   **Rama Derecha (Sex = Male)**:
+        -   En la rama de los individuos que no son de sexo femenino (es decir, masculino), el 67% consume alcohol (`Y = Yes`). Esto sugiere que los hombres en el conjunto de datos tienen una mayor probabilidad de ser consumidores de alcohol comparado con las mujeres.
+        -   **Segundo Corte en Rama Derecha (gamma_GTP \< 32)**: La siguiente división se basa en el valor de la enzima hepática gamma-GTP. Si este valor es menor que 32, el modelo identifica que el 57% del grupo todavía consume alcohol. Este corte indica que la enzima gamma-GTP es un factor importante en la predicción del consumo de alcohol, probablemente reflejando un marcador relacionado con el consumo de alcohol.
 
 ```{r}
 # Obtener la importancia de las variables directamente del modelo
-importancia <- arbol_modelo$variable.importance
+importancia <- arbol_modelo_default$variable.importance
 
 # Ordenar la importancia de mayor a menor
 importancia <- sort(importancia, decreasing = TRUE)
@@ -275,7 +339,7 @@ library(caret)
 library(pROC)
 
 # Realizar predicciones en el conjunto de validación
-predicciones <- predict(arbol_modelo, newdata = validation_data, type = "class")
+predicciones <- predict(arbol_modelo_default, newdata = validation_data, type = "class")
 
 # Convertir validation_data$DRK_YN a factor y eliminar niveles no usados
 validation_data$DRK_YN <- as.factor(validation_data$DRK_YN)
@@ -311,8 +375,72 @@ auc_roc <- auc(roc_curve)
 # Mostrar el AUC-ROC
 print(auc_roc)
 
-
 ```
+
+## Interpretación de los resultados
+
+Basado en los resultados proporcionados del modelo de árbol de decisión, vamos a interpretar cada una de las métricas de rendimiento:
+
+### 1. **Matriz de Confusión**:
+
+-   **True Negatives (TN):** 2427
+-   **False Positives (FP):** 1307
+-   **False Negatives (FN):** 989
+-   **True Positives (TP):** 2777
+
+La matriz de confusión muestra que: - El modelo predijo correctamente 2427 personas que no beben (TN) y 2777 personas que sí beben (TP). - Predijo incorrectamente 1307 personas como bebedores cuando no lo son (FP) y 989 personas como no bebedores cuando sí lo son (FN).
+
+### 2. **Accuracy (Precisión Global):**
+
+$$
+\text{Accuracy} = \frac{TP + TN}{TP + TN + FP + FN} = \frac{2427 + 2777}{2427 + 2777 + 1307 + 989} \approx 0.6939
+$$ La precisión global es del **69.39%**, lo que significa que el modelo clasifica correctamente el 69.39% de todas las instancias. Aunque está por encima del azar (50%), indica que el modelo tiene un rendimiento moderado y hay margen para mejorar.
+
+### 3. **Sensitivity (Recall or Tasa de Verdaderos Positivos):**
+
+$$
+\text{Sensitivity} = \frac{TP}{TP + FN} = \frac{2777}{2777 + 989} \approx 0.65
+$$ La **sensibilidad** es del **65%**, lo que indica que el modelo identifica correctamente el 65% de los casos positivos reales (personas que sí beben). Esto sugiere que hay un número significativo de falsos negativos (personas que beben pero son clasificadas como no bebedores).
+
+### 4. **Specificity (Tasa de Verdaderos Negativos):**
+
+$$
+\text{Specificity} = \frac{TN}{TN + FP} = \frac{2427}{2427 + 1307} \approx 0.7374
+$$ La **especificidad** es del **73.74%**, lo que significa que el modelo identifica correctamente el 73.74% de los casos negativos reales (personas que no beben). Esto indica que hay un número considerable de falsos positivos (personas que no beben pero son clasificadas como bebedores).
+
+### 5. **Precision (Valor Predictivo Positivo):**
+
+$$
+\text{Precision} = \frac{TP}{TP + FP} = \frac{2777}{2777 + 1307} \approx 0.7105
+$$ La **precisión** es del **71.05%**, lo que indica que el 71.05% de las personas clasificadas como bebedores por el modelo realmente beben. Una precisión moderada sugiere que hay un número significativo de falsos positivos.
+
+### 6. **F1-Score**:
+
+$$
+\text{F1-Score} = 2 \times \frac{\text{Precision} \times \text{Recall}}{\text{Precision} + \text{Recall}} = 2 \times \frac{0.7105 \times 0.65}{0.7105 + 0.65} \approx 0.6789
+$$ El **F1-Score** de **0.6789** proporciona un equilibrio entre la precisión y el recall, lo que sugiere que el modelo tiene un rendimiento moderado en términos de precisión y sensibilidad combinadas.
+
+### 7. **Kappa**:
+
+$$
+\text{Kappa} = 0.3875
+$$ El **Kappa** mide el acuerdo entre las predicciones del modelo y las observaciones reales, ajustado por el acuerdo que podría esperarse por casualidad. Un valor de Kappa de **0.3875** indica un acuerdo moderado, sugiriendo que el modelo tiene un rendimiento mejor que el azar pero no es excepcional.
+
+### 8. **AUC-ROC (Área bajo la Curva - Característica Operativa del Receptor):**
+
+$$
+\text{AUC-ROC} = 0.6937
+$$ El **AUC-ROC** es de **0.6937**, lo que indica que el modelo tiene un rendimiento moderado en la clasificación de positivos y negativos. Un AUC cercano a 0.7 indica que el modelo tiene una capacidad razonable para diferenciar entre personas que beben y las que no.
+
+### **Interpretación General de Resultados**:
+
+-   El modelo tiene un rendimiento razonablemente bueno, con una precisión y sensibilidad moderadas, lo que sugiere que puede diferenciar entre consumidores de alcohol y no consumidores, pero con algunas limitaciones.
+-   Hay un número significativo de falsos positivos y falsos negativos, lo que sugiere que el modelo podría mejorarse para reducir estos errores.
+-   Las métricas indican un modelo que es mejor que el azar pero que aún tiene espacio para la optimización, como ajustar hiperparámetros, realizar una selección de características más refinada o utilizar técnicas de aprendizaje más avanzadas para mejorar su rendimiento general.
+
+## Ejercicio 5
+
+En una primera instancia exploramos manualmente con distintas combinacion paraa darnos una iddea de en que rango se podian encontrar los hiperparametros que buscabamos.
 
 ```{r}
 arbol_modelo <- rpart(DRK_YN ~ ., data = train_data, method = "class",
@@ -332,10 +460,20 @@ print(auc_roc)
 
 ```
 
+## Búsqueda de Hiperparámetros Óptimos
+
+Para encontrar los hiperparámetros óptimos, se realizará una búsqueda exhaustiva de todas las combinaciones posibles de los hiperparámetros `minsplit`, `minbucket` y `maxdepth`. Se entrenará un modelo para cada combinación y se calculará el AUC-ROC en el conjunto de validación. Finalmente, se seleccionará la combinación que maximice el AUC-ROC. Paralelizamos la busqueda para acelerar el proceso (RIP CPU)
+
 ```{r}
 # Cargar las librerías necesarias
 library(rpart)
 library(pROC)
+
+numCores <- detectCores() - 1
+
+# Crear el clúster
+cl <- makeCluster(numCores)
+registerDoParallel(cl)
 
 # Inicializar un data frame para guardar los resultados
 resultados <- data.frame(minsplit = integer(),
@@ -350,31 +488,34 @@ minbucket_values <- seq(50, 150, by = 10)
 maxdepth_values <- seq(1, 15, by = 1)
 
 # Triple for para recorrer todas las combinaciones de hiperparámetros
-for (minsplit in minsplit_values) {
-  for (minbucket in minbucket_values) {
-    for (maxdepth in maxdepth_values) {
-      
-      # Entrenar el modelo con la combinación actual de hiperparámetros
-      arbol_modelo <- rpart(DRK_YN ~ ., data = train_data, method = "class",
-                            cp = 0,           # Parámetro de complejidad
-                            xval = 0,
-                            minsplit = minsplit,       # Mínimo número de observaciones en un nodo antes de dividir
-                            minbucket = minbucket,     # Mínimo número de observaciones en un nodo terminal
-                            maxdepth = maxdepth)        # Profundidad máxima del árbol
-      
-      # Calcular el AUC-ROC
-      predicciones <- predict(arbol_modelo, newdata = validation_data, type = "class")
-      roc_curve <- roc(as.numeric(validation_data$DRK_YN), as.numeric(predicciones), quiet = TRUE)
-      auc_roc <- auc(roc_curve)
-      
-      # Guardar los resultados en el data frame
-      resultados <- rbind(resultados, data.frame(minsplit = minsplit, 
-                                                 minbucket = minbucket, 
-                                                 maxdepth = maxdepth, 
-                                                 auc_roc = auc_roc))
-    }
-  }
-}
+# Definir los rangos de los hiperparámetros
+minsplit_values <- seq(50, 500, by = 25)
+minbucket_values <- seq(50, 150, by = 10)
+maxdepth_values <- seq(1, 15, by = 1)
+
+# Ejecutar el bucle en paralelo
+resultados <- foreach(minsplit = minsplit_values, .combine = rbind, .packages = c("rpart", "pROC")) %:%
+              foreach(minbucket = minbucket_values, .combine = rbind) %:%
+              foreach(maxdepth = maxdepth_values, .combine = rbind) %dopar% {
+                # Entrenar el modelo con la combinación actual de hiperparámetros
+                arbol_modelo <- rpart(DRK_YN ~ ., data = train_data, method = "class",
+                                      cp = 0,
+                                      xval = 0,
+                                      minsplit = minsplit,
+                                      minbucket = minbucket,
+                                      maxdepth = maxdepth)
+                # Calcular el AUC-ROC
+                predicciones <- predict(arbol_modelo, newdata = validation_data, type = "class")
+                roc_curve <- roc(as.numeric(validation_data$DRK_YN), as.numeric(predicciones), quiet = TRUE)
+                auc_roc <- auc(roc_curve)
+
+                # Retornar los resultados
+                data.frame(minsplit = minsplit, 
+                           minbucket = minbucket, 
+                           maxdepth = maxdepth, 
+                           auc_roc = auc_roc)
+              }
+stopCluster(cl)
 
 # Mostrar los resultados
 print(resultados)
@@ -395,6 +536,13 @@ cat("Logrado con minsplit =", best_params$minsplit,
     ", minbucket =", best_params$minbucket, 
     ", maxdepth =", best_params$maxdepth, "\n")
 ```
+
+La mejor combinacion lograda de hiperparametros fue con\
+Logrado con minsplit = 475 , minbucket = 110 , maxdepth = 11 con un máximo AUC-ROC de 0.7176264 Para entender mejor como se comportan los hiperparametros, se graficaran los resultados obtenidos.
+
+### Graficamos la búsqueda
+
+Los siguientes graficos muestra para cada hiperparametro como reacciono el AUC-ROC al variar el hiperparametro. Se puede ver el maximo AUC-ROC para ese valor del hiperparametro entre las combinaciones de los otros dos hiperparametros probadas.
 
 ```{r}
 
@@ -437,18 +585,96 @@ ggplot(best_by_maxdepth, aes(x = maxdepth, y = auc_roc)) +
 
 ```
 
+Pudimos observar en una exploracion inicial que si el minsplit no era por lo menos 3 veces mayor que el minbucket este no tenia efecto en el modelo, por lo que se decidio que este avanzara hasta valores mayores que el maximo propuesto de minbucket. Tambien De la misma manera hubo que agregarle mas valores al rango de minbucket y minsplit ya que el maximo encontrado estaba siemrpe en el valor mas grande de estos.
+
+En los graficos se puede ver como el AUC-ROC tiene un pico en el valor optimo de cada hiperparametro, y luego disminuye a medida que se aleja de este valor optimo. En minsplit podemos observar como para los valores mas bajo el maximo que alcanzan es mas alto y luego disminuye un poco antes de volver a subir y llegar a su óptimo. El maxdepth se plancha pero por la naturaleza del hiperparametro valores alto producirian un overfitting, esto puede que no haya sucedido ya que el minbucket lo detuvo de realizar demasiadas ramas en algun punto. Esto nos parecío curioso, pero llegamos a entender que en esos valores pequeños, debido a que el minbucket era mayor al minsplit este queda anulado y no afectaba el resultado.
+
 ```{r}
-#Esto seria el punto 6 pero no veo mucha diferencia (?)
 arbol_modelo2 <- rpart(DRK_YN ~ ., data = train_data, method = "class",
                             cp = 0,           # Parámetro de complejidad
                             xval = 0,
-                            minsplit = 50,       # Mínimo número de observaciones en un nodo antes de dividir
-                            minbucket = 100,     # Mínimo número de observaciones en un nodo terminal
+                            minsplit = 475,       # Mínimo número de observaciones en un nodo antes de dividir
+                            minbucket = 110,     # Mínimo número de observaciones en un nodo terminal
                             maxdepth = 11)  
 
 # Visualizar el árbol
 rpart.plot(arbol_modelo2)
 ```
+
+
+```{r error-metrics, message=FALSE, warning=FALSE}
+# Instalar paquetes necesarios
+#install.packages("caret")
+#install.packages("e1071")
+#install.packages("pROC")
+
+# Cargar librerías
+library(caret)
+library(pROC)
+
+# Realizar predicciones en el conjunto de validación
+predicciones_optimizadas <- predict(arbol_modelo2, newdata = validation_data, type = "class")
+
+# Convertir validation_data$DRK_YN a factor y eliminar niveles no usados
+validation_data$DRK_YN <- as.factor(validation_data$DRK_YN)
+validation_data$DRK_YN <- droplevels(validation_data$DRK_YN)
+
+# Convertir predicciones a factor con los mismos niveles que validation_data$DRK_YN
+niveles <- levels(validation_data$DRK_YN)
+predicciones_optimizadas <- factor(predicciones_optimizadas, levels = niveles)
+
+# Crear la matriz de confusión
+confusion_matrix_optimizadas <- confusionMatrix(predicciones_optimizadas, validation_data$DRK_YN)
+print(confusion_matrix_optimizadas)
+
+# Obtener la precisión
+accuracy_optimizadas <- confusion_matrix_optimizadas$overall["Accuracy"]
+print(accuracy_optimizadas)
+
+# Calcular la precisión y el recall
+precision_optimizadas <- confusion_matrix_optimizadas$byClass["Precision"]
+recall_optimizadas <- confusion_matrix_optimizadas$byClass["Recall"]
+print(precision_optimizadas)
+print(recall_optimizadas)
+
+# Calcular el F1-score
+f1_score_optimizadas <- 2 * (precision_optimizadas * recall_optimizadas) / (precision_optimizadas + recall_optimizadas)
+print("f1_score")
+print(f1_score_optimizadas)
+
+# Calcular el AUC-ROC
+roc_curve_optimizadas <- roc(as.numeric(validation_data$DRK_YN), as.numeric(predicciones_optimizadas))
+auc_roc_optimizadas <- auc(roc_curve_optimizadas)
+
+# Mostrar el AUC-ROC
+print(auc_roc_optimizadas)
+
+```
+
+
+```{r}
+# Realizar predicciones en el conjunto de validación
+predicciones_optimizadas <- predict(arbol_modelo2, newdata = test_data, type = "class")
+predicciones_default <- predict(arbol_modelo_default, newdata = test_data, type = "class")
+# Convertir validation_data$DRK_YN a factor y eliminar niveles no usados
+test_data$DRK_YN <- as.factor(test_data$DRK_YN)
+test_data$DRK_YN <- droplevels(test_data$DRK_YN)
+
+# Convertir predicciones a factor con los mismos niveles que validation_data$DRK_YN
+niveles <- levels(test_data$DRK_YN)
+predicciones_default <- factor(predicciones_default, levels = niveles)
+predicciones_optimizadas <- factor(predicciones_optimizadas, levels = niveles)
+
+roc_curve_optimizadas <- roc(as.numeric(test_data$DRK_YN), as.numeric(predicciones_optimizadas))
+auc_roc_optimizadas <- auc(roc_curve_optimizadas)
+auc_roc_optimizadas
+roc_curve_default <- roc(as.numeric(test_data$DRK_YN), as.numeric(predicciones_default))
+auc_roc_default <- auc(roc_curve_default)
+auc_roc_default
+```
+En test nuevamente podemos ver que el árbol con hiperparametros optimizados tiene una mejor performance que el default. Aún que la mejora no es muy grande en esta situacion, un modelo puede mejorar mucho con mejores hiperparámetros
+
+
 
 ```{r}
 # Obtener la importancia de las variables directamente del modelo
@@ -470,11 +696,34 @@ importancia2 <- sort(importancia2, decreasing = TRUE)
 print(importancia2)
 
 # Visualizar la importancia de las variables
-barplot(importancia, las = 2, col = "blue", main = "Importancia de las Variables")
+barplot(importancia, las = 2, col = "blue", main = "Importancia de las Variables Arbol Default")
 
 # Visualizar la importancia de las variables
-barplot(importancia2, las = 2, col = "blue", main = "Importancia de las Variables")
+barplot(importancia2, las = 2, col = "blue", main = "Importancia de las Variables Arbol Optimizado")
 ```
+
+### Árbol de Decisión Optimizado y su Comparación con el Árbol Inicial
+
+#### Resultados del Árbol Optimizado
+
+El árbol de decisión optimizado ha sido construido con los siguientes parámetros: - **minsplit = 475:** Este parámetro indica el número mínimo de observaciones que un nodo debe tener antes de que se realice un split. - **minbucket = 110:** Representa el número mínimo de observaciones que se permite en un nodo hoja. - **maxdepth = 11:** Especifica la profundidad máxima del árbol, permitiendo un mayor número de niveles en comparación con el árbol base.
+
+#### Diferencias con Respecto al Árbol Inicial
+
+1.  **Profundidad del Árbol**:
+    -   El árbol optimizado tiene una **profundidad máxima de 11 niveles**, mientras que el árbol inicial era mucho más superficial. Esto permite al árbol optimizado capturar relaciones más complejas entre las variables, segmentando los datos en grupos más específicos.
+2.  **Número de Splits**:
+    -   Con una **profundidad mayor** y **criterios de split más flexibles**, el árbol optimizado realiza más splits. Esto aumenta la capacidad del modelo para identificar patrones más sutiles y mejorar la clasificación.
+3.  **AUC-ROC Mejorado**:
+    -   El **AUC-ROC ha mejorado de 0.6937 a 0.7176**. Este aumento indica que el árbol optimizado tiene una mejor capacidad para discriminar entre los positivos (bebedores) y negativos (no bebedores) en comparación con el árbol inicial.
+4.  **Ajuste de Hiperparámetros**:
+    -   Los parámetros ajustados, como `minsplit` y `minbucket`, permiten que el árbol sea más robusto y además evitar overfitting. Este ajuste ha contribuido a un mejor rendimiento general del modelo.
+
+#### Variables Más Importantes en el Árbol Optimizado
+
+Las variables más importantes en el árbol optimizado son aquellas que aparecen más cerca de la raíz del árbol o que contribuyen más a la reducción de la impureza en cada split. Como podemos observar el orden de las variables más importantes tuvo pequeñas variaciones, aunque el Top se mantuvo
+
+El árbol de decisión optimizado es significativamente más profundo y mejor en términos de métricas de rendimiento como AUC-ROC en comparación con el árbol inicial.
 
 ```{r}
 # Función para agregar NA a un porcentaje de datos
@@ -526,59 +775,62 @@ cat("AUC-ROC para 75% de NA:", auc_75, "\n")
 ```
 
 ```{r}
-# Inicializar un data frame para guardar los resultados_2
-resultados_2 <- data.frame(minsplit = integer(),
-                         minbucket = integer(),
-                         maxdepth = integer(),
-                         auc_roc_20 = numeric(),
-                         auc_roc_50 = numeric(),
-                         auc_roc_75 = numeric(),
-                         stringsAsFactors = FALSE)
+library(rpart)
+library(pROC)
+library(foreach)
+library(doParallel)
 
 # Definir los rangos de los hiperparámetros
 minsplit_values <- seq(50, 500, by = 25)
-minbucket_values <- seq(50, 150, by = 10)
-maxdepth_values <- seq(1, 15, by = 1)
+minbucket_values <- seq(50, 250, by = 25)
+maxdepth_values <- seq(1, 13, by = 1)
 
-# Triple for para recorrer todas las combinaciones de hiperparámetros
-for (minsplit in minsplit_values) {
-  for (minbucket in minbucket_values) {
-    for (maxdepth in maxdepth_values) {
-      
-      # Entrenar el modelo con la combinación actual de hiperparámetros para 20% NA
-      arbol_modelo_20 <- rpart(DRK_YN ~ ., data = train_data_20, method = "class",
-                               control = rpart.control(maxdepth = maxdepth, minsplit = minsplit, minbucket = minbucket, cp = 0, xval = 0))
-      predicciones_20 <- predict(arbol_modelo_20, newdata = validation_data, type = "class")
-      roc_curve_20 <- roc(as.numeric(validation_data$DRK_YN), as.numeric(predicciones_20), quiet = TRUE)
-      auc_roc_20 <- auc(roc_curve_20)
-      
-      # Entrenar el modelo con la combinación actual de hiperparámetros para 50% NA
-      arbol_modelo_50 <- rpart(DRK_YN ~ ., data = train_data_50, method = "class",
-                               control = rpart.control(maxdepth = maxdepth, minsplit = minsplit, minbucket = minbucket, cp = 0, xval = 0))
-      predicciones_50 <- predict(arbol_modelo_50, newdata = validation_data, type = "class")
-      roc_curve_50 <- roc(as.numeric(validation_data$DRK_YN), as.numeric(predicciones_50), quiet = TRUE)
-      auc_roc_50 <- auc(roc_curve_50)
-      
-      # Entrenar el modelo con la combinación actual de hiperparámetros para 75% NA
-      arbol_modelo_75 <- rpart(DRK_YN ~ ., data = train_data_75, method = "class",
-                               control = rpart.control(maxdepth = maxdepth, minsplit = minsplit, minbucket = minbucket, cp = 0, xval = 0))
-      predicciones_75 <- predict(arbol_modelo_75, newdata = validation_data, type = "class")
-      roc_curve_75 <- roc(as.numeric(validation_data$DRK_YN), as.numeric(predicciones_75), quiet = TRUE)
-      auc_roc_75 <- auc(roc_curve_75)
-      
-      # Guardar los resultados_2 en el data frame
-      resultados_2 <- rbind(resultados_2, data.frame(minsplit = minsplit, 
-                                                 minbucket = minbucket, 
-                                                 maxdepth = maxdepth, 
-                                                 auc_roc_20 = auc_roc_20,
-                                                 auc_roc_50 = auc_roc_50,
-                                                 auc_roc_75 = auc_roc_75))
-    }
+# Crear el cluster para paralelización
+num_cores <- detectCores() - 1  # Usar todos los núcleos menos uno
+cl <- makeCluster(num_cores)
+registerDoParallel(cl)
+
+# Usar foreach para paralelizar los bucles
+resultados_2 <- foreach(minsplit = minsplit_values, .combine = rbind, .packages = c("rpart", "pROC")) %:%
+  foreach(minbucket = minbucket_values, .combine = rbind) %:%
+  foreach(maxdepth = maxdepth_values, .combine = rbind) %dopar% {
+    
+    # Entrenar el modelo con la combinación actual de hiperparámetros para 20% NA
+    arbol_modelo_20 <- rpart(DRK_YN ~ ., data = train_data_20, method = "class",
+                             control = rpart.control(maxdepth = maxdepth, minsplit = minsplit, minbucket = minbucket, cp = 0, xval = 0))
+    predicciones_20 <- predict(arbol_modelo_20, newdata = validation_data, type = "class")
+    roc_curve_20 <- roc(as.numeric(validation_data$DRK_YN), as.numeric(predicciones_20), quiet = TRUE)
+    auc_roc_20 <- auc(roc_curve_20)
+    
+    # Entrenar el modelo con la combinación actual de hiperparámetros para 50% NA
+    arbol_modelo_50 <- rpart(DRK_YN ~ ., data = train_data_50, method = "class",
+                             control = rpart.control(maxdepth = maxdepth, minsplit = minsplit, minbucket = minbucket, cp = 0, xval = 0))
+    predicciones_50 <- predict(arbol_modelo_50, newdata = validation_data, type = "class")
+    roc_curve_50 <- roc(as.numeric(validation_data$DRK_YN), as.numeric(predicciones_50), quiet = TRUE)
+    auc_roc_50 <- auc(roc_curve_50)
+    
+    # Entrenar el modelo con la combinación actual de hiperparámetros para 75% NA
+    arbol_modelo_75 <- rpart(DRK_YN ~ ., data = train_data_75, method = "class",
+                             control = rpart.control(maxdepth = maxdepth, minsplit = minsplit, minbucket = minbucket, cp = 0, xval = 0))
+    predicciones_75 <- predict(arbol_modelo_75, newdata = validation_data, type = "class")
+    roc_curve_75 <- roc(as.numeric(validation_data$DRK_YN), as.numeric(predicciones_75), quiet = TRUE)
+    auc_roc_75 <- auc(roc_curve_75)
+    
+    # Devolver los resultados como un data frame
+    data.frame(minsplit = minsplit, 
+               minbucket = minbucket, 
+               maxdepth = maxdepth, 
+               auc_roc_20 = auc_roc_20,
+               auc_roc_50 = auc_roc_50,
+               auc_roc_75 = auc_roc_75)
   }
-}
 
-# Mostrar los resultados_2
+# Detener el cluster
+stopCluster(cl)
+
+# Mostrar los resultados
 print(resultados_2)
+
 ```
 
 ```{r}
@@ -615,6 +867,10 @@ cat("Logrado con minsplit =", best_params_75$minsplit,
 
 ```
 
+Los nuevos óptimos no son los mismos que cuando teniamos las variables sin valores nulos, pudimos observar que el máximo es menor a moayor proporcion de nulos, lo cual era de esoerar ya que cada modelo tiene menos informacion que el anterior. 
+
+
+
 ```{r}
 # Gráfico para maxdepth (Para 20% NA)
 best_by_maxdepth_20 <- aggregate(auc_roc_20 ~ maxdepth, data = resultados_2, max)
@@ -649,6 +905,37 @@ ggplot(best_by_maxdepth_75, aes(x = maxdepth, y = auc_roc_75)) +
 ```
 
 ```{r}
+best_by_minsplit_20 <- aggregate(auc_roc_20 ~ minsplit, data = resultados_2, max)
+ggplot(best_by_minsplit_20, aes(x = minsplit, y = auc_roc_20)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Mejor AUC-ROC por minsplit (20% NA)",
+       x = "minsplit",
+       y = "AUC-ROC") +
+  theme_minimal()
+
+# Gráfico para minsplit (Para 50% NA)
+best_by_minsplit_50 <- aggregate(auc_roc_50 ~ minsplit, data = resultados_2, max)
+ggplot(best_by_minsplit_50, aes(x = minsplit, y = auc_roc_50)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Mejor AUC-ROC por minsplit (50% NA)",
+       x = "minsplit",
+       y = "AUC-ROC") +
+  theme_minimal()
+
+# Gráfico para minsplit (Para 50% NA)
+best_by_minsplit_75 <- aggregate(auc_roc_75 ~ minsplit, data = resultados_2, max)
+ggplot(best_by_minsplit_75, aes(x = minsplit, y = auc_roc_75)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Mejor AUC-ROC por minsplit (75% NA)",
+       x = "minsplit",
+       y = "AUC-ROC") +
+  theme_minimal()
+```
+
+```{r}
 best_by_minbucket_20 <- aggregate(auc_roc_20 ~ minbucket, data = resultados_2, max)
 ggplot(best_by_minbucket_20, aes(x = minbucket, y = auc_roc_20)) +
   geom_line() +
@@ -679,6 +966,127 @@ ggplot(best_by_minbucket_75, aes(x = minbucket, y = auc_roc_75)) +
   theme_minimal()
 ```
 
+
+
 ```{r}
+arbol_modelo20 <- rpart(DRK_YN ~ ., data = train_data_20, method = "class",
+                            cp = 0,           # Parámetro de complejidad
+                            xval = 0,
+                            minsplit = 375,       # Mínimo número de observaciones en un nodo antes de dividir
+                            minbucket = 100,     # Mínimo número de observaciones en un nodo terminal
+                            maxdepth = 10)  
+
+# Visualizar el árbol
+rpart.plot(arbol_modelo20)
+```
+
+
+```{r}
+arbol_modelo50 <- rpart(DRK_YN ~ ., data = train_data_50, method = "class",
+                            cp = 0,           # Parámetro de complejidad
+                            xval = 0,
+                            minsplit = 50,       # Mínimo número de observaciones en un nodo antes de dividir
+                            minbucket = 10,     # Mínimo número de observaciones en un nodo terminal
+                            maxdepth = 9)  
+
+# Visualizar el árbol
+rpart.plot(arbol_modelo50)
+```
+
+
+```{r}
+arbol_modelo75 <- rpart(DRK_YN ~ ., data = train_data_75, method = "class",
+                            cp = 0,           # Parámetro de complejidad
+                            xval = 0,
+                            minsplit = 50,       # Mínimo número de observaciones en un nodo antes de dividir
+                            minbucket = 175,     # Mínimo número de observaciones en un nodo terminal
+                            maxdepth = 5)  
+
+# Visualizar el árbol
+rpart.plot(arbol_modelo75)
+```
+
+```{r}
+# Realizar predicciones en el conjunto de validación
+predicciones_optimizadas <- predict(arbol_modelo2, newdata = test_data, type = "class")
+predicciones_20 <- predict(arbol_modelo20, newdata = test_data, type = "class")
+predicciones_50 <- predict(arbol_modelo50, newdata = test_data, type = "class")
+predicciones_75 <- predict(arbol_modelo75, newdata = test_data, type = "class")
+# Convertir validation_data$DRK_YN a factor y eliminar niveles no usados
+test_data$DRK_YN <- as.factor(test_data$DRK_YN)
+test_data$DRK_YN <- droplevels(test_data$DRK_YN)
+
+# Convertir predicciones a factor con los mismos niveles que validation_data$DRK_YN
+niveles <- levels(test_data$DRK_YN)
+predicciones_optimizadas <- factor(predicciones_optimizadas, levels = niveles)
+predicciones_20 <- factor(predicciones_20, levels = niveles)
+predicciones_50 <- factor(predicciones_50, levels = niveles)
+predicciones_75 <- factor(predicciones_75, levels = niveles)
+
+roc_curve_optimizadas <- roc(as.numeric(test_data$DRK_YN), as.numeric(predicciones_optimizadas))
+auc_roc_optimizadas <- auc(roc_curve_optimizadas)
+auc_roc_optimizadas
+
+roc_curve_20 <- roc(as.numeric(test_data$DRK_YN), as.numeric(predicciones_20))
+auc_roc_20 <- auc(roc_curve_20)
+auc_roc_20
+
+roc_curve_50 <- roc(as.numeric(test_data$DRK_YN), as.numeric(predicciones_50))
+auc_roc_50 <- auc(roc_curve_50)
+auc_roc_50
+
+roc_curve_75 <- roc(as.numeric(test_data$DRK_YN), as.numeric(predicciones_75))
+auc_roc_75 <- auc(roc_curve_75)
+auc_roc_75
 
 ```
+
+### Análisis del Impacto de Valores Faltantes en el Rendimiento del Modelo
+
+**Degradación del Rendimiento**: A medida que aumenta el porcentaje de valores faltantes, se observa una **degradación en el rendimiento del modelo**. Tanto la exactitud (accuracy) como el AUC-ROC disminuyen, lo que sugiere que el modelo se vuelve menos efectivo en la clasificación del consumo de alcohol. Esto se debe a que la pérdida de datos puede afectar la capacidad del modelo para aprender patrones significativos, especialmente cuando los datos faltantes son numerosos y distribuidos de manera no aleatoria.
+
+**Menor Profundidad con Mayor Proporción de Valores Faltantes**: A medida que aumenta el porcentaje de NAs, es preferible reducir la profundidad del árbol de decisión. Un árbol menos profundo es menos propenso al sobreajuste, lo cual es crucial cuando se trabaja con datos incompletos. Cuando hay muchos valores faltantes, un árbol profundo puede comenzar a aprender patrones del ruido introducido por la imputación o los valores faltantes en lugar de los patrones verdaderos en los datos. Por tanto, al limitar la profundidad del árbol, se mejora la capacidad del modelo para generalizar en un conjunto de datos con una alta proporción de valores faltantes, manteniendo un rendimiento más robusto y estable.
+
+#### Reflexión y Sugerencias Futuras
+
+- **Estrategias Avanzadas de Imputación**: Para mitigar el impacto negativo de los valores faltantes, se pueden explorar técnicas más avanzadas de imputación, como el **aprendizaje profundo (deep learning)** para la imputación de datos o modelos generativos adversariales (GANs). Estas técnicas pueden capturar patrones complejos en los datos, ofreciendo imputaciones más precisas que las técnicas tradicionales como la media o la mediana.
+
+- **Análisis de Sensibilidad**: Realizar un análisis de sensibilidad para identificar qué variables predictoras son más sensibles a los valores faltantes y concentrarse en mejorar la calidad de los datos para esas variables específicas. Esto puede ayudar a priorizar el esfuerzo en la recolección de datos y en las estrategias de imputación más eficaces para las variables que más afectan el rendimiento del modelo.
+
+- **Regularización y Complejidad del Modelo**: Ajustar los hiperparámetros del modelo de decisión, como la profundidad del árbol (maxdepth) y el número mínimo de observaciones en un nodo (minbucket), para evitar el sobreajuste en presencia de valores faltantes. Al regularizar el modelo y limitar su complejidad, se mejora la generalización del modelo y se evita que aprenda patrones espurios introducidos por los valores faltantes.
+
+En resumen, la efectividad del árbol de decisión disminuye con la presencia de valores faltantes, especialmente si no se manejan adecuadamente. Reducir la profundidad del árbol en tales situaciones es una estrategia útil para preservar el rendimiento del modelo, garantizando que permanezca lo suficientemente simple como para generalizar bien en datos incompletos.
+
+
+
+
+
+### Resumen de los Hallazgos Principales
+
+1. **Identificación de Factores Clave**: A través del análisis con el árbol de decisión, hemos identificado que variables como **hemoglobina**, **edad**, **sexo**, etc son importantes para predecir el consumo de alcohol. Estas variables permiten al modelo segmentar la población en subgrupos significativos, revelando patrones de consumo basados en características biológicas y demográficas.
+
+2. **Mejoras en el Modelo**: La optimización del árbol de decisión, ajustando parámetros como `minsplit`, `minbucket` y `maxdepth`, resultó en un modelo más profundo y complejo, lo que mejoró el **AUC-ROC de 0.6937 a 0.7176**. Este incremento indica una mejor capacidad del modelo para discriminar entre consumidores y no consumidores de alcohol.
+
+3. **Precisión y Sensibilidad**: El árbol optimizado mostró un **aumento en la precisión** y una **mejora en el balance entre la sensibilidad y la especificidad**, lo que sugiere que el modelo es más efectivo en la clasificación correcta de consumidores de alcohol y no consumidores, minimizando falsos positivos y falsos negativos.
+
+4. **Aprendizaje en el manejo de NAs**: Logramos manejar Datasets con variables nulas y analizamos que tanto afecta en la precisión de las predicciones el incrementar la cantidad de NAs en dicho Dataset
+
+### Reflexión sobre la Efectividad del Árbol de Decisión
+
+El árbol de decisión ha demostrado ser una herramienta efectiva para abordar el problema de predecir el consumo de alcohol basado en datos de señales corporales. Los árboles de decisión son particularmente útiles en este contexto debido a su capacidad para manejar tanto variables categóricas como continuas y su facilidad para interpretar las decisiones de clasificación. 
+
+### Sugerencias para Mejoras o Direcciones Futuras
+
+1. **Ensemble Methods**: Utilizar métodos de ensamblado como **Random Forests** o **Gradient Boosting Machines (GBM)** podría mejorar la precisión del modelo y reducir la variabilidad. Estos métodos combinan múltiples árboles de decisión para crear un modelo más robusto y menos propenso a sobreajustar los datos de entrenamiento.
+
+2. **Feature Engineering**: Explorar la creación de nuevas variables derivadas (feature engineering) podría ayudar a mejorar el rendimiento del modelo. Por ejemplo, combinaciones de variables existentes o la transformación de variables continuas en categóricas basadas en umbrales clínicamente relevantes podrían aportar mayor valor predictivo.
+
+3. **Cross-Validation y Regularización**: Implementar técnicas de validación cruzada para asegurar que el modelo se generalice bien a nuevos datos. Además, considerar técnicas de regularización para reducir el riesgo de sobreajuste, como el podado del árbol o la limitación de la profundidad del árbol más estrictamente.
+
+4. **Incorporación de Datos Adicionales**: Incorporar datos adicionales que puedan ser relevantes para el consumo de alcohol, como factores socioeconómicos, estilos de vida, o antecedentes familiares, podría mejorar la precisión del modelo.
+
+5. **Análisis Comparativo**: Realizar un análisis comparativo utilizando otros algoritmos de clasificación como **Logistic Regression**, **Support Vector Machines (SVM)**, o **Neural Networks** podría ayudar a identificar el modelo más efectivo para este problema en particular.
+
+### Conclusión
+
+El árbol de decisión optimizado ha proporcionado un marco inicial sólido para la predicción del consumo de alcohol basado en datos de señales corporales. Sin embargo, hay varias oportunidades para mejorar la precisión, robustez y generalización del modelo. Aplicando técnicas avanzadas de aprendizaje automático y refinando los datos, podemos construir un modelo aún más eficaz y valioso para aplicaciones prácticas, como en la industria de seguros o la investigación en salud pública.
