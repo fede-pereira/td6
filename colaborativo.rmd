@@ -5,6 +5,8 @@ date: "2024-08-24"
 output: pdf_document
 ---
 
+
+
 ```{r setup, include=FALSE}
 # Configuraciones iniciales
 
@@ -12,6 +14,18 @@ knitr::opts_chunk$set(echo = TRUE)
 library(rpart)
 library(dplyr)
 ```
+
+
+## Ejercicio 1
+
+
+
+
+# Ejercicio 2
+
+## Carga inicial de datos
+
+
 
 ```{r}
 data_original <- read.csv("C:/Users/fpereira/Downloads/smoking_driking_dataset_Ver01.csv")
@@ -23,13 +37,15 @@ data <- sample_n(data_original, 50000)
 
 ```
 
+
 ```{r}
 # Mostrar las primeras filas del conjunto de datos
 head(data)
 ```
 
-## Recodificación de Columnas Numéricas a Categóricas
 
+## Recodificación de Columnas Numéricas a Categóricas
+Nuestros datos tenian muchas variables Categóricas expresadas como números, por lo que se procedió a recodificarlas como se pidío en la consigna.
 ```{r recode-columns, message=FALSE, warning=FALSE}
 library(dplyr)
 
@@ -78,10 +94,12 @@ head(data)
 summary(data)
 ```
 
-## Distribución de las Columnas Numéricas
+
+
+
 
 ## Graficar la Distribución de Variables Numéricas y No Numéricas
-
+Para explorar la distribución de las variables numéricas y no numéricas, se graficarán histogramas y gráficos de barras respectivamente.
 ```{r distribution-plot-all, message=FALSE, warning=FALSE}
 library(ggplot2)
 
@@ -113,6 +131,11 @@ plot_list
 
 ```
 
+Pudimos observar que la variable objetivo `DRK_YN`, estaba balanceada, lo cual es bueno para el modelo. Tambien la distribucion de las variables numericas no presentaba valores atipicos, su distribucion en general era normal con pocos ouliers.
+Algunas clases estaba desbalanceadas, como por ejemplo la variable `hear_right` y `hear_left`.
+
+## Graficar la Matriz de Correlación
+Para continuear con la exploracion de los datos, realizamos un analisis de correlacion entre las variables numericas.
 ```{r correlation-matrix-groups, message=FALSE, warning=FALSE}
 library(ggcorrplot)
 # Dividir las columnas en grupos de 5 (puedes ajustar el tamaño del grupo)
@@ -133,6 +156,8 @@ for (cols in col_groups) {
                    ggtheme = theme_minimal()))
 }
 ```
+
+
 
 ```{r correlation-matrix-filtered, message=FALSE, warning=FALSE}
 library(ggcorrplot)
@@ -156,10 +181,12 @@ ggcorrplot(corr_matrix_filtered,
 
 ```
 
+Pudimos observar que no habia correlaciones fuertes entre las variables numericas, lo cual es bueno para el modelo, ya que no hay multicolinealidad entre las variables. A exccepcion de variables que estan relacionadas por naturaleza, como por ejemplo `hear_right` y `hear_left`.
+
 ## Correlación con la Columna `DRK_YN`
 
 ## Cálculo de Correlación y Reversión de la Conversión
-
+El siguiente paso fue analizar la correlacion con la variale a predecir, `DRK_YN`, para ello se grafico la correlacion de cada variable numerica con `DRK_YN`. para esto  recreamos la variable `DRK_YN` a un binario 1 y 0 para caluclar asi su correlacion con las variables numericas.
 ```{r correlation-specific-column-plot-revert, message=FALSE, warning=FALSE}
 library(dplyr)
 library(ggplot2)
@@ -202,6 +229,8 @@ data$DRK_YN <- original_DRK_YN
 
 ```
 
+Ninguna variable presento una correlacion mayor a un 0.4 con la variable objetivo `DRK_YN`, aun asi esperamos que el modelo pueda predecir correctamente la variable objetivo ya que todas tienen algo de correlacion y combinandolas podrian revelar relaciones a DRK_YN`.
+
 ```{r}
 # Mostrar las primeras filas del conjunto de datos
 head(data)
@@ -209,7 +238,7 @@ head(data)
 
 ## División del Conjunto de Datos en Entrenamiento, Validación y Testeo
 
-```{r data-split, message=FALSE, warning=FALSE}
+``` {r data-split, message=FALSE, warning=FALSE}
 # Fijar la semilla para asegurar la replicabilidad
 set.seed(123)
 
@@ -238,16 +267,16 @@ test_data <- data[test_indices, ]
 cat("Tamaño del conjunto de entrenamiento:", nrow(train_data), "\n")
 cat("Tamaño del conjunto de validación:", nrow(validation_data), "\n")
 cat("Tamaño del conjunto de testeo:", nrow(test_data), "\n")
-```
-
-```{r entrenamiento default  message=FALSE, warning=FALSE}
+``` 
+``` {r entrenamiento default  message=FALSE, warning=FALSE}
 #install.packages("rpart.plot")
 library(rpart.plot)
 arbol_modelo <- rpart(DRK_YN ~ ., data = train_data, method = "class")
 
 # Visualizar el árbol
 rpart.plot(arbol_modelo)
-```
+``` 
+
 
 ```{r}
 # Obtener la importancia de las variables directamente del modelo
@@ -264,7 +293,9 @@ barplot(importancia, las = 2, col = "blue", main = "Importancia de las Variables
 
 ```
 
-```{r error-metrics, message=FALSE, warning=FALSE}
+
+
+``` {r error-metrics, message=FALSE, warning=FALSE}
 # Instalar paquetes necesarios
 #install.packages("caret")
 #install.packages("e1071")
@@ -314,6 +345,10 @@ print(auc_roc)
 
 ```
 
+# Ejercicio 5
+
+En una primera instancia exploramos manualmente con distintas combinacion paraa darnos una iddea de en que rango se podian encontrar los hiperparametros que buscabamos.
+
 ```{r}
 arbol_modelo <- rpart(DRK_YN ~ ., data = train_data, method = "class",
                       cp = 0,           # Parámetro de complejidad
@@ -331,6 +366,10 @@ auc_roc <- auc(roc_curve)
 print(auc_roc)
 
 ```
+
+## Búsqueda de Hiperparámetros Óptimos
+Para encontrar los hiperparámetros óptimos, se realizará una búsqueda exhaustiva de todas las combinaciones posibles de los hiperparámetros `minsplit`, `minbucket` y `maxdepth`. Se entrenará un modelo para cada combinación y se calculará el AUC-ROC en el conjunto de validación. Finalmente, se seleccionará la combinación que maximice el AUC-ROC.
+
 
 ```{r}
 # Cargar las librerías necesarias
@@ -436,7 +475,6 @@ ggplot(best_by_maxdepth, aes(x = maxdepth, y = auc_roc)) +
   theme_minimal()
 
 ```
-
 ```{r}
 #Esto seria el punto 6 pero no veo mucha diferencia (?)
 arbol_modelo2 <- rpart(DRK_YN ~ ., data = train_data, method = "class",
@@ -449,7 +487,6 @@ arbol_modelo2 <- rpart(DRK_YN ~ ., data = train_data, method = "class",
 # Visualizar el árbol
 rpart.plot(arbol_modelo2)
 ```
-
 ```{r}
 # Obtener la importancia de las variables directamente del modelo
 importancia <- arbol_modelo$variable.importance
@@ -475,6 +512,11 @@ barplot(importancia, las = 2, col = "blue", main = "Importancia de las Variables
 # Visualizar la importancia de las variables
 barplot(importancia2, las = 2, col = "blue", main = "Importancia de las Variables")
 ```
+
+
+
+
+
 
 ```{r}
 # Función para agregar NA a un porcentaje de datos
@@ -682,3 +724,5 @@ ggplot(best_by_minbucket_75, aes(x = minbucket, y = auc_roc_75)) +
 ```{r}
 
 ```
+
+
